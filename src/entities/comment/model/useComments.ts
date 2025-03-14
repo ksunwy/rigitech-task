@@ -10,35 +10,36 @@ export const useInfiniteComments = (postId: number, limit: number = 10): UseInfi
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(true);
 
-  const loadMoreComments = async (): Promise<void> => {
+  const loadMoreComments = useCallback(async (): Promise<void> => {
     if (loading || !hasMore) return;
-
+  
     setLoading(true);
     try {
       const newComments: Comment[] = await fetchCommentsByPostId(postId, start, limit);
+  
       if (newComments.length === 0) {
-        setHasMore(false); 
+        setHasMore(false);
       } else {
-        setComments((prev: Comment[]) => [...prev, ...newComments]); 
-        setStart((prev: number) => prev + limit); 
+        setComments((prev) => [...prev, ...newComments]); 
+        setStart(prev => prev + limit);
       }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId, limit, loading, hasMore]);
 
   const handleScroll = useCallback(
-    throttle((): void => {
+    throttle(() => {
       if (loading || !hasMore) return;
-
+  
       const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
       if (scrollTop + clientHeight >= scrollHeight - 100) {
         loadMoreComments();
       }
     }, 500),
-    [loading, hasMore]
+    [loading, hasMore, loadMoreComments] 
   );
 
   useEffect(() => {
@@ -47,10 +48,10 @@ export const useInfiniteComments = (postId: number, limit: number = 10): UseInfi
   }, [handleScroll]);
 
   useEffect(() => {
-    if (hasMore) {
-      loadMoreComments(); 
+    if (postId && hasMore) {
+      loadMoreComments();
     }
-  }, [postId, hasMore]);
+  }, [postId, start]);
 
   return { comments, loading, error, hasMore };
 };
